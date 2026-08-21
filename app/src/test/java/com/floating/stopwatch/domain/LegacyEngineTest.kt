@@ -83,7 +83,7 @@ class LegacyEngineTest {
 
     @Test
     fun testSerializationAndDeserialization() {
-        val legacy = legacyEngine.createLegacy("Persistent Legacy", 15, 3, 30)
+        val created = legacyEngine.createLegacy("Persistent Legacy", 15, 3, 30)
         legacyEngine.addManualTime(1800000L) // 30 mins
 
         val json = legacyEngine.serializeLegaciesToJson()

@@ -44,7 +44,7 @@ data class LegacyItem(
         val sb = StringBuilder()
         sb.append("{")
         sb.append("\"id\":\"").append(id).append("\",")
-        sb.append("\"name\":\"").append(name.replace("\"", "\\\"")).append("\",")
+        sb.append("\"name\":\"").append(name.replace("\\", "\\\\").replace("\"", "\\\"")).append("\",")
         sb.append("\"totalDays\":").append(totalDays).append(",")
         sb.append("\"dailyTargetHours\":").append(dailyTargetHours).append(",")
         sb.append("\"dailyTargetMinutes\":").append(dailyTargetMinutes).append(",")
@@ -60,20 +60,32 @@ data class LegacyItem(
     companion object {
         fun jsonToItem(jsonStr: String): LegacyItem? {
             return try {
-                val idStr = extractJsonString(jsonStr, "id") ?: return null
-                val nameStr = extractJsonString(jsonStr, "name") ?: "UNTITLED LEGACY"
-                val totalDaysVal = extractJsonInt(jsonStr, "totalDays") ?: 30
-                val dailyTargetHoursVal = extractJsonInt(jsonStr, "dailyTargetHours") ?: 0
-                val dailyTargetMinutesVal = extractJsonInt(jsonStr, "dailyTargetMinutes") ?: 0
-                val accumulatedMsVal = extractJsonLong(jsonStr, "accumulatedMs") ?: 0L
-                val createdTimestampMsVal = extractJsonLong(jsonStr, "createdTimestampMs") ?: System.currentTimeMillis()
-                val postponedDaysVal = extractJsonInt(jsonStr, "postponedDays") ?: 0
-                val todayAccumulatedMsVal = extractJsonLong(jsonStr, "todayAccumulatedMs") ?: 0L
-                val lastSessionDateDayVal = extractJsonInt(jsonStr, "lastSessionDateDay") ?: -1
+                fun getString(key: String): String? {
+                    val regex = "\"$key\"\\s*:\\s*\"((?:\\\\\"|[^\"])*)\"".toRegex()
+                    return regex.find(jsonStr)?.groupValues?.get(1)?.replace("\\\"", "\"")?.replace("\\\\", "\\")
+                }
+                fun getLong(key: String): Long? {
+                    val regex = "\"$key\"\\s*:\\s*(-?\\d+)".toRegex()
+                    return regex.find(jsonStr)?.groupValues?.get(1)?.toLongOrNull()
+                }
+                fun getInt(key: String): Int? {
+                    return getLong(key)?.toInt()
+                }
+
+                val idVal = getString("id") ?: return null
+                val nameVal = getString("name") ?: "UNTITLED LEGACY"
+                val totalDaysVal = getInt("totalDays") ?: 30
+                val dailyTargetHoursVal = getInt("dailyTargetHours") ?: 0
+                val dailyTargetMinutesVal = getInt("dailyTargetMinutes") ?: 0
+                val accumulatedMsVal = getLong("accumulatedMs") ?: 0L
+                val createdTimestampMsVal = getLong("createdTimestampMs") ?: System.currentTimeMillis()
+                val postponedDaysVal = getInt("postponedDays") ?: 0
+                val todayAccumulatedMsVal = getLong("todayAccumulatedMs") ?: 0L
+                val lastSessionDateDayVal = getInt("lastSessionDateDay") ?: -1
 
                 LegacyItem(
-                    id = idStr,
-                    name = nameStr,
+                    id = idVal,
+                    name = nameVal,
                     totalDays = totalDaysVal,
                     dailyTargetHours = dailyTargetHoursVal,
                     dailyTargetMinutes = dailyTargetMinutesVal,
@@ -86,21 +98,6 @@ data class LegacyItem(
             } catch (e: Exception) {
                 null
             }
-        }
-
-        private fun extractJsonString(json: String, key: String): String? {
-            val pattern = "\"$key\"\\s*:\\s*\"([^\"]*)\"".toRegex()
-            return pattern.find(json)?.groupValues?.get(1)
-        }
-
-        private fun extractJsonInt(json: String, key: String): Int? {
-            val pattern = "\"$key\"\\s*:\\s*(-?\\d+)".toRegex()
-            return pattern.find(json)?.groupValues?.get(1)?.toIntOrNull()
-        }
-
-        private fun extractJsonLong(json: String, key: String): Long? {
-            val pattern = "\"$key\"\\s*:\\s*(-?\\d+)".toRegex()
-            return pattern.find(json)?.groupValues?.get(1)?.toLongOrNull()
         }
     }
 }
@@ -132,8 +129,8 @@ class LegacyEngine {
         if (jsonString.isBlank()) return
         try {
             val list = mutableListOf<LegacyItem>()
-            val objectPattern = "\\{[^{}]*\\}".toRegex()
-            objectPattern.findAll(jsonString).forEach { match ->
+            val objectRegex = "\\{[^{}]*\\}".toRegex()
+            objectRegex.findAll(jsonString).forEach { match ->
                 val item = LegacyItem.jsonToItem(match.value)
                 if (item != null) {
                     list.add(item)
@@ -149,11 +146,11 @@ class LegacyEngine {
     }
 
     fun serializeLegaciesToJson(): String {
-        val sb = StringBuilder()
-        sb.append("[")
-        _legacies.value.forEachIndexed { index, item ->
-            if (index > 0) sb.append(",")
-            sb.append(item.toJson())
+        val list = _legacies.value
+        val sb = java.lang.StringBuilder("[")
+        for (i in list.indices) {
+            if (i > 0) sb.append(",")
+            sb.append(list[i].toJson())
         }
         sb.append("]")
         return sb.toString()
