@@ -12,15 +12,17 @@ import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.launch
 
 import com.floating.stopwatch.domain.IntervalEngine
+import com.floating.stopwatch.domain.LegacyEngine
 
 enum class AppMode {
-    Stopwatch, Countdown, Counter, Intervals
+    Stopwatch, Countdown, Counter, Intervals, Legacy
 }
 
 class MainViewModel(
     val engine: StopwatchEngine,
     val countdownEngine: CountdownEngine = CountdownEngine(),
-    val intervalEngine: IntervalEngine = IntervalEngine()
+    val intervalEngine: IntervalEngine = IntervalEngine(),
+    val legacyEngine: LegacyEngine = LegacyEngine()
 ) : ViewModel() {
 
     val currentMode = MutableStateFlow(AppMode.Stopwatch)
@@ -42,17 +44,19 @@ class MainViewModel(
             AppMode.Stopwatch -> AppMode.Countdown
             AppMode.Countdown -> AppMode.Counter
             AppMode.Counter -> AppMode.Intervals
-            AppMode.Intervals -> AppMode.Stopwatch
+            AppMode.Intervals -> AppMode.Legacy
+            AppMode.Legacy -> AppMode.Stopwatch
         }
         currentMode.value = nextMode
     }
 
     fun previousMode() {
         val prevMode = when (currentMode.value) {
-            AppMode.Stopwatch -> AppMode.Intervals
+            AppMode.Stopwatch -> AppMode.Legacy
             AppMode.Countdown -> AppMode.Stopwatch
             AppMode.Counter -> AppMode.Countdown
             AppMode.Intervals -> AppMode.Counter
+            AppMode.Legacy -> AppMode.Intervals
         }
         currentMode.value = prevMode
     }

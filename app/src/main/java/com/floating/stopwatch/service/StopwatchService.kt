@@ -71,6 +71,7 @@ class StopwatchService : Service() {
         private var sharedEngine: StopwatchEngine? = null
         private var sharedCountdownEngine: CountdownEngine? = null
         private var sharedIntervalEngine: com.floating.stopwatch.domain.IntervalEngine? = null
+        private var sharedLegacyEngine: com.floating.stopwatch.domain.LegacyEngine? = null
 
         fun getEngine(): StopwatchEngine {
             if (sharedEngine == null) {
@@ -116,6 +117,13 @@ class StopwatchService : Service() {
                 service.checkCounterMilestoneAndVibrate(newVal)
             }
             return true
+        }
+
+        fun getLegacyEngine(): com.floating.stopwatch.domain.LegacyEngine {
+            if (sharedLegacyEngine == null) {
+                sharedLegacyEngine = com.floating.stopwatch.domain.LegacyEngine()
+            }
+            return sharedLegacyEngine!!
         }
     }
 

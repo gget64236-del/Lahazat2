@@ -57,7 +57,8 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
         mainViewModel = MainViewModel(
             engine = StopwatchService.getEngine(),
             countdownEngine = StopwatchService.getCountdownEngine(),
-            intervalEngine = StopwatchService.getIntervalEngine()
+            intervalEngine = StopwatchService.getIntervalEngine(),
+            legacyEngine = StopwatchService.getLegacyEngine()
         )
         hapticController = HapticController(applicationContext)
 
@@ -78,6 +79,22 @@ class MainActivity : androidx.fragment.app.FragmentActivity() {
                 )
             }.collectLatest { template ->
                 StopwatchService.getIntervalEngine().loadTemplate(template)
+            }
+        }
+
+        // Load and sync Legacy data from DataStore
+        lifecycleScope.launch {
+            settingsRepository.savedLegaciesJson.collectLatest { json ->
+                if (json.isNotBlank()) {
+                    StopwatchService.getLegacyEngine().loadLegaciesFromJson(json)
+                }
+            }
+        }
+
+        StopwatchService.getLegacyEngine().onLegaciesUpdated = { list ->
+            lifecycleScope.launch {
+                val json = StopwatchService.getLegacyEngine().serializeLegaciesToJson()
+                settingsRepository.setSavedLegaciesJson(json)
             }
         }
 
