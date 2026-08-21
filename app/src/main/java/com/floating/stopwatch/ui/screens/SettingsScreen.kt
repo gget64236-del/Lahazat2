@@ -1,16 +1,11 @@
 package com.floating.stopwatch.ui.screens
 
 import androidx.compose.foundation.BorderStroke
-import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
@@ -26,6 +21,10 @@ import com.floating.stopwatch.ui.theme.LuxuryColors
 import kotlinx.coroutines.launch
 import androidx.activity.compose.BackHandler
 
+private enum class SettingsPresentationState {
+    MENU, PANEL
+}
+
 @Composable
 fun SettingsScreen(
     settingsRepository: SettingsRepository,
@@ -33,10 +32,8 @@ fun SettingsScreen(
 ) {
     val scope = rememberCoroutineScope()
 
-    // Presentation state:
-    // null -> Showing Category Menu List
-    // Non-null -> Category List hidden, showing compact top-left popup for selected category
-    var activePopupCategory by remember { mutableStateOf<String?>(null) }
+    var state by remember { mutableStateOf(SettingsPresentationState.MENU) }
+    var selectedCategory by remember { mutableStateOf<String?>(null) }
 
     val stylePreset by settingsRepository.stylePreset.collectAsState(initial = "Glass Premium")
     val colorPreset by settingsRepository.colorPreset.collectAsState(initial = "Gold")
@@ -57,10 +54,14 @@ fun SettingsScreen(
     )
 
     BackHandler {
-        if (activePopupCategory != null) {
-            activePopupCategory = null
-        } else {
-            onBack()
+        when (state) {
+            SettingsPresentationState.PANEL -> {
+                state = SettingsPresentationState.MENU
+                selectedCategory = null
+            }
+            SettingsPresentationState.MENU -> {
+                onBack()
+            }
         }
     }
 
@@ -82,20 +83,24 @@ fun SettingsScreen(
         modifier = Modifier
             .fillMaxSize()
             .clickable {
-                if (activePopupCategory != null) {
-                    activePopupCategory = null
-                } else {
-                    onBack()
+                when (state) {
+                    SettingsPresentationState.PANEL -> {
+                        state = SettingsPresentationState.MENU
+                        selectedCategory = null
+                    }
+                    SettingsPresentationState.MENU -> {
+                        onBack()
+                    }
                 }
             }
     ) {
-        // 1. Category Menu List (Shown when no category popup is active)
-        if (activePopupCategory == null) {
+        // 1. MENU STATE: Category List positioned directly underneath FLOAT at TopEnd
+        if (state == SettingsPresentationState.MENU) {
             Column(
                 modifier = Modifier
                     .align(Alignment.TopEnd)
                     .statusBarsPadding()
-                    .padding(top = 24.dp, end = 24.dp),
+                    .padding(top = 56.dp, end = 24.dp), // Positioned directly underneath FLOAT
                 horizontalAlignment = Alignment.End
             ) {
                 categories.forEach { cat ->
@@ -104,7 +109,8 @@ fun SettingsScreen(
                         style = floatStyle,
                         modifier = Modifier
                             .clickable {
-                                activePopupCategory = cat
+                                selectedCategory = cat
+                                state = SettingsPresentationState.PANEL
                             }
                             .padding(vertical = 4.dp, horizontal = 8.dp)
                     )
@@ -112,8 +118,9 @@ fun SettingsScreen(
             }
         }
 
-        // 2. Compact Opaque Popup at Top-Left (Shown when category is selected)
-        activePopupCategory?.let { category ->
+        // 2. PANEL STATE: Compact, solid opaque panel anchored at TopStart (top-left)
+        if (state == SettingsPresentationState.PANEL && selectedCategory != null) {
+            val category = selectedCategory!!
             Box(
                 modifier = Modifier
                     .fillMaxSize()
@@ -123,12 +130,12 @@ fun SettingsScreen(
             ) {
                 Surface(
                     modifier = Modifier
-                        .widthIn(max = 380.dp)
+                        .widthIn(max = 360.dp)
                         .wrapContentHeight()
-                        .clickable(enabled = false) {}, // Consume taps inside popup
+                        .clickable(enabled = false) {}, // Consume clicks inside panel
                     shape = RoundedCornerShape(12.dp),
-                    color = Color(0xFF0A0A0A), // Solid opaque surface - nothing behind readable
-                    border = BorderStroke(1.dp, activeAccentColor.copy(alpha = 0.5f)) // Thin refined outline
+                    color = Color(0xFF0A0A0A), // Solid opaque black surface
+                    border = BorderStroke(1.dp, activeAccentColor.copy(alpha = 0.5f))
                 ) {
                     Column(
                         modifier = Modifier
@@ -150,7 +157,10 @@ fun SettingsScreen(
                                 color = LuxuryColors.WarmGray,
                                 fontSize = 14.sp,
                                 modifier = Modifier
-                                    .clickable { activePopupCategory = null }
+                                    .clickable {
+                                        state = SettingsPresentationState.MENU
+                                        selectedCategory = null
+                                    }
                                     .padding(4.dp)
                             )
                         }
@@ -200,9 +210,9 @@ fun SettingsScreen(
                                     onValueChange = { scope.launch { settingsRepository.setMainDisplayScale(it) } }
                                 )
                             }
-                            "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets, accentColor = activeAccentColor)
-                            "Countdown" -> WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets, accentColor = activeAccentColor)
-                            "Counter" -> WidgetCategorySettings(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets, accentColor = activeAccentColor)
+                            "Stopwatch" -> WidgetCategorySettings(index = 0, widgetTitle = "STOPWATCH", settingsRepository = settingsRepository, scope = scope, accentColor = activeAccentColor)
+                            "Countdown" -> WidgetCategorySettings(index = 1, widgetTitle = "COUNTDOWN", settingsRepository = settingsRepository, scope = scope, accentColor = activeAccentColor)
+                            "Counter" -> WidgetCategorySettings(index = 2, widgetTitle = "COUNTER", settingsRepository = settingsRepository, scope = scope, accentColor = activeAccentColor)
                             "Interval" -> {
                                 val intervalName by settingsRepository.intervalName.collectAsState(initial = "HIT")
                                 val workMs by settingsRepository.intervalWorkMs.collectAsState(initial = 40000L)
@@ -290,7 +300,7 @@ fun SettingsScreen(
 
                                 Spacer(modifier = Modifier.height(10.dp))
 
-                                WidgetCategorySettings(index = 3, widgetTitle = "INTERVAL", settingsRepository = settingsRepository, scope = scope, colorPresets = colorPresets, accentColor = activeAccentColor)
+                                WidgetCategorySettings(index = 3, widgetTitle = "INTERVAL", settingsRepository = settingsRepository, scope = scope, accentColor = activeAccentColor)
                             }
                             "Floating Widgets" -> {
                                 val shapePreset by settingsRepository.shapePreset.collectAsState(initial = "rounded")
@@ -480,7 +490,6 @@ fun WidgetCategorySettings(
     widgetTitle: String,
     settingsRepository: SettingsRepository,
     scope: kotlinx.coroutines.CoroutineScope,
-    colorPresets: List<String>,
     accentColor: Color
 ) {
     val isWidgetActive by settingsRepository.isWidgetActive(index).collectAsState(initial = index == 0)
