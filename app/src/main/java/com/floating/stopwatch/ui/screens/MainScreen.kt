@@ -47,6 +47,7 @@ import com.floating.stopwatch.ui.AppMode
 import com.floating.stopwatch.ui.MainViewModel
 import com.floating.stopwatch.ui.components.TimeDisplay
 import com.floating.stopwatch.ui.components.DragAdjustField
+import com.floating.stopwatch.ui.components.StellarBackground
 import com.floating.stopwatch.data.SettingsRepository
 import com.floating.stopwatch.ui.theme.LuxuryColors
 import com.floating.stopwatch.domain.HapticController
@@ -227,11 +228,18 @@ fun MainScreen(
     var totalDragX by remember { mutableFloatStateOf(0f) }
 
     Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(currentBgColor)
-            .padding(24.dp)
-            .pointerInput(Unit) {
+        modifier = Modifier.fillMaxSize()
+    ) {
+        // STELLAR background atmosphere layer behind application UI
+        StellarBackground(
+            modifier = Modifier.fillMaxSize()
+        )
+
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(24.dp)
+                .pointerInput(Unit) {
                 detectTapGestures(
                     onTap = {
                         resetAutoHideTimer()
@@ -1031,6 +1039,7 @@ fun MainScreen(
                 )
             }
         }
+    }
     }
 
     // Slide-up bottom sheet for luxury clean laps listing
